@@ -117,11 +117,17 @@ app.openapi(uploadRoute, async (c) => {
   const arrayBuffer = await file.arrayBuffer()
   writeFileSync(filepath, new Uint8Array(arrayBuffer))
 
+  // 获取完整URL路径
+  const protocol = c.req.header('x-forwarded-proto') || 'http'
+  const host = c.req.header('host') || 'localhost:3002'
+  const fullUrl = `${protocol}://${host}/uploads/${filename}`
+  console.log('Generated full URL:', fullUrl)
+
   // 存入数据库
   const image = await prisma.image.create({
     data: {
       filename: file.name,
-      path: `/uploads/${filename}`,
+      path: fullUrl,
     },
   })
 

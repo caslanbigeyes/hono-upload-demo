@@ -4,7 +4,7 @@ import { serveStatic } from '@hono/node-server/serve-static'
 
 import { PrismaClient } from '@prisma/client'
 import { mkdirSync, writeFileSync } from 'fs'
-import { join } from 'path'
+import { join, resolve } from 'path'
 
 const app = new Hono()
 const prisma = new PrismaClient()
@@ -37,11 +37,17 @@ app.post('/upload', async (c) => {
     const arrayBuffer = await file.arrayBuffer()
     writeFileSync(filepath, new Uint8Array(arrayBuffer))
 
+    // 获取完整URL路径
+    const protocol = c.req.header('x-forwarded-proto') || 'http'
+    const host = c.req.header('host') || 'localhost:3002'
+    const fullUrl = `${protocol}://${host}/uploads/${filename}`
+    console.log('Generated full URL:', fullUrl)
+
     // 存入数据库
     const image = await prisma.image.create({
         data: {
             filename: file.name,
-            path: `/uploads/${filename}`,
+            path: fullUrl,
         },
     })
 
@@ -54,7 +60,15 @@ app.post('/upload', async (c) => {
 // 查询已上传的图片
 app.get('/images', async (c) => {
     const images = await prisma.image.findMany({ orderBy: { id: 'desc' } })
-    return c.json(images)
+    
+    // 确保所有图片都有完整的URL
+    const baseUrl = `${c.req.header('host') ? `http://${c.req.header('host')}` : 'http://localhost:3002'}`
+    const imagesWithFullUrl = images.map(image => ({
+        ...image,
+        path: image.path.startsWith('http') ? image.path : `${baseUrl}${image.path}`
+    }))
+    
+    return c.json(imagesWithFullUrl)
 })
 
 export default app

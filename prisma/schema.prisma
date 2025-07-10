@@ -7,9 +7,206 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-model Image {
-  id        Int      @id @default(autoincrement())
-  filename  String
-  path      String
-  createdAt DateTime @default(now())
+// 用户表
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String?  // OAuth 用户可能没有密码
+  name        String?
+  avatar      String?
+  phone       String?
+  wechatId    String?  @unique // 微信 OpenID
+  unionId     String?  @unique // 微信 UnionID
+  provider    String   @default("email") // email, wechat
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  resumes     Resume[]
+  files       File[]
+
+  @@map("users")
+}
+
+// 简历表
+model Resume {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String   @default("我的简历")
+  isDefault   Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  template    String   @default("classic") // 简历模板
+  status      String   @default("draft") // draft, published, archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 基本信息
+  personalInfo PersonalInfo?
+
+  // 关联关系
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  educations      Education[]
+  experiences     Experience[]
+  projects        Project[]
+  skills          Skill[]
+  certificates    Certificate[]
+  languages       Language[]
+  files           File[]
+
+  @@map("resumes")
+}
+
+// 个人信息表
+model PersonalInfo {
+  id          String   @id @default(cuid())
+  resumeId    String   @unique
+  fullName    String
+  email       String
+  phone       String?
+  address     String?
+  city        String?
+  country     String?
+  website     String?
+  linkedin    String?
+  github      String?
+  summary     String?  // 个人简介
+  objective   String?  // 求职目标
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("personal_info")
+}
+
+// 教育经历表
+model Education {
+  id          String   @id @default(cuid())
+  resumeId    String
+  school      String
+  degree      String   // 学位
+  major       String   // 专业
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  gpa         String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("educations")
+}
+
+// 工作经历表
+model Experience {
+  id          String   @id @default(cuid())
+  resumeId    String
+  company     String
+  position    String
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  description String?
+  achievements String? // 工作成就列表 (JSON string)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("experiences")
+}
+
+// 项目经验表
+model Project {
+  id          String   @id @default(cuid())
+  resumeId    String
+  name        String
+  description String?
+  role        String?  // 项目角色
+  technologies String? // 使用技术 (JSON string)
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  url         String?  // 项目链接
+  github      String?  // GitHub 链接
+  achievements String? // 项目成果 (JSON string)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("projects")
+}
+
+// 技能表
+model Skill {
+  id          String   @id @default(cuid())
+  resumeId    String
+  category    String   // 技能分类：programming, tools, soft_skills
+  name        String
+  level       String   @default("intermediate") // beginner, intermediate, advanced, expert
+  yearsOfExp  Int?     // 使用年限
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("skills")
+}
+
+// 证书表
+model Certificate {
+  id          String   @id @default(cuid())
+  resumeId    String
+  name        String
+  issuer      String   // 颁发机构
+  issueDate   DateTime
+  expiryDate  DateTime?
+  credentialId String? // 证书编号
+  url         String?  // 证书链接
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
+}
+
+// 语言能力表
+model Language {
+  id          String   @id @default(cuid())
+  resumeId    String
+  name        String
+  level       String   // native, fluent, conversational, basic
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("languages")
+}
+
+// 文件表
+model File {
+  id          String   @id @default(cuid())
+  userId      String?
+  resumeId    String?
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String   // 文件访问URL
+  storageKey  String   // 存储服务的key
+  type        String   // avatar, resume_pdf, cover_letter
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume Resume? @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@map("files")
 }
