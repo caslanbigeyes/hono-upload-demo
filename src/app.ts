@@ -9,6 +9,10 @@ import authRoutes from './routes/auth'
 import userRoutes from './routes/users'
 import resumeRoutes from './routes/resumes'
 import personalInfoRoutes from './routes/personal-info'
+import educationRoutes from './routes/educations'
+import experienceRoutes from './routes/experiences'
+import projectRoutes from './routes/projects'
+import skillRoutes from './routes/skills'
 
 // Database
 import { testDatabaseConnection } from './lib/database'
@@ -38,6 +42,10 @@ app.route('/api/auth', authRoutes)
 app.route('/api/users', userRoutes)
 app.route('/api/resumes', resumeRoutes)
 app.route('/api/personal-info', personalInfoRoutes)
+app.route('/api/educations', educationRoutes)
+app.route('/api/experiences', experienceRoutes)
+app.route('/api/projects', projectRoutes)
+app.route('/api/skills', skillRoutes)
 
 // OpenAPI Documentation
 app.doc('/api/doc', {

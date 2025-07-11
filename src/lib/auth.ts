@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import type { Context } from 'hono'
+import { prisma } from './database.js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
@@ -46,13 +47,47 @@ export class AuthService {
   }
 
   // 从 Context 中获取当前用户
-  static getCurrentUser(c: Context): JWTPayload | null {
+  static getCurrentUser(c: any): JWTPayload | null {
     return c.get('user') || null
+  }
+
+  // 从数据库获取完整的用户信息
+  static async getUserFromDatabase(c: any) {
+    try {
+      const authHeader = c.req.header('Authorization')
+      const token = this.extractTokenFromHeader(authHeader)
+
+      if (!token) {
+        return null
+      }
+
+      const payload = this.verifyToken(token)
+      if (!payload) {
+        return null
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          avatar: true,
+          provider: true,
+          createdAt: true
+        }
+      })
+
+      return user
+    } catch (error) {
+      console.error('Auth error:', error)
+      return null
+    }
   }
 }
 
 // JWT 中间件
-export const jwtMiddleware = async (c: Context, next: () => Promise<void>) => {
+export const jwtMiddleware = async (c: any, next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization')
   const token = AuthService.extractTokenFromHeader(authHeader)
 
@@ -71,7 +106,7 @@ export const jwtMiddleware = async (c: Context, next: () => Promise<void>) => {
 }
 
 // 可选的 JWT 中间件（不强制要求登录）
-export const optionalJwtMiddleware = async (c: Context, next: () => Promise<void>) => {
+export const optionalJwtMiddleware = async (c: any, next: () => Promise<void>) => {
   const authHeader = c.req.header('Authorization')
   const token = AuthService.extractTokenFromHeader(authHeader)
 
