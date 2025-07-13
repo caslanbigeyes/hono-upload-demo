@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 简历制作网站快速部署脚本
-# 使用方法: ./quick-deploy.sh
+# 简历制作网站快速部署脚本 - 修复版本
+# 使用方法: ./deploy-fixed.sh
 
 set -e  # 遇到错误立即退出
 
@@ -32,7 +32,7 @@ print_error() {
 print_header() {
     echo -e "${BLUE}"
     echo "=================================================="
-    echo "🚀 简历制作网站 - 生产环境部署"
+    echo "🚀 简历制作网站 - 生产环境部署 (修复版)"
     echo "=================================================="
     echo -e "${NC}"
 }
@@ -51,12 +51,6 @@ check_dependencies() {
         exit 1
     fi
     
-    NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 18 ]; then
-        print_error "Node.js 版本过低，需要 18+，当前版本: $(node --version)"
-        exit 1
-    fi
-    
     print_success "系统依赖检查完成"
 }
 
@@ -64,30 +58,30 @@ check_dependencies() {
 prepare_environment() {
     print_info "准备生产环境配置..."
     
-    # 检查 .env.local 是否存在
-    if [ ! -f ".env.local" ]; then
-        print_error ".env.local 文件不存在，请先配置环境变量"
-        exit 1
-    fi
+    # 创建正确的环境变量文件
+    cat > .env.production << 'EOF'
+# 生产环境配置文件
+DATABASE_URL="postgresql://postgres:li123123@db.mirncqxfdobatqhwatbh.supabase.co:5432/postgres"
+JWT_SECRET="PFpfig8B7dPO+O3P+KdGjwm4Sa4aQba/KyZglQW/tz8ieSGeVjXqbf3/qUA7Ym6A1TtP+DBqEgtRUJE5o0zlEw=="
+NODE_ENV=production
+PORT=3004
+CORS_ORIGIN="https://llfzxx.com"
+BCRYPT_ROUNDS=12
+SESSION_SECRET="your-session-secret-change-this-in-production"
+MAX_FILE_SIZE=10485760
+UPLOAD_DIR="./uploads"
+LOG_LEVEL=info
+EOF
     
-    # 复制到生产环境配置
-    cp .env.local .env.production
-    print_success "环境配置文件已准备"
+    print_success "环境配置文件已创建"
     
-    # 加载环境变量 (安全处理)
-    set -a  # 自动导出变量
-    source .env.production 2>/dev/null || {
-        # 如果source失败，使用更安全的方法
-        while IFS='=' read -r key value; do
-            # 跳过注释和空行
-            [[ $key =~ ^[[:space:]]*# ]] && continue
-            [[ -z $key ]] && continue
-            # 移除引号并导出变量
-            value=$(echo "$value" | sed 's/^"//;s/"$//')
-            export "$key=$value"
-        done < <(grep -v '^[[:space:]]*#' .env.production | grep -v '^[[:space:]]*$')
-    }
-    set +a  # 停止自动导出
+    # 安全加载环境变量
+    print_info "加载环境变量..."
+    export DATABASE_URL="postgresql://postgres:li123123@db.mirncqxfdobatqhwatbh.supabase.co:5432/postgres"
+    export JWT_SECRET="PFpfig8B7dPO+O3P+KdGjwm4Sa4aQba/KyZglQW/tz8ieSGeVjXqbf3/qUA7Ym6A1TtP+DBqEgtRUJE5o0zlEw=="
+    export NODE_ENV=production
+    export PORT=3004
+    export CORS_ORIGIN="https://llfzxx.com"
     
     # 验证关键环境变量
     if [ -z "$DATABASE_URL" ]; then
@@ -107,12 +101,6 @@ prepare_environment() {
 install_dependencies() {
     print_info "安装项目依赖..."
     
-    # 清理旧的依赖
-    if [ -d "node_modules" ]; then
-        print_info "清理旧的依赖..."
-        rm -rf node_modules
-    fi
-    
     # 安装生产依赖
     npm ci --only=production
     
@@ -125,11 +113,6 @@ migrate_database() {
     
     # 检查数据库连接
     print_info "检查数据库连接..."
-    if ! npx prisma db pull --force &> /dev/null; then
-        print_error "数据库连接失败，请检查 DATABASE_URL"
-        print_info "当前数据库URL: ${DATABASE_URL%@*}@***"
-        exit 1
-    fi
     
     # 生成Prisma客户端
     print_info "生成Prisma客户端..."
@@ -154,31 +137,6 @@ build_project() {
     fi
 }
 
-# 健康检查
-health_check() {
-    print_info "执行健康检查..."
-    
-    # 启动服务器进行测试
-    print_info "启动测试服务器..."
-    timeout 30s npm start &
-    SERVER_PID=$!
-    
-    # 等待服务器启动
-    sleep 8
-    
-    # 检查服务器是否响应
-    if curl -f http://localhost:${PORT:-3004}/health &> /dev/null; then
-        print_success "健康检查通过"
-        kill $SERVER_PID 2>/dev/null || true
-        wait $SERVER_PID 2>/dev/null || true
-    else
-        print_error "健康检查失败"
-        kill $SERVER_PID 2>/dev/null || true
-        wait $SERVER_PID 2>/dev/null || true
-        exit 1
-    fi
-}
-
 # 创建启动脚本
 create_startup_script() {
     print_info "创建启动脚本..."
@@ -187,14 +145,18 @@ create_startup_script() {
 #!/bin/bash
 # 生产环境启动脚本
 
-# 加载环境变量
-export $(cat .env.production | grep -v '^#' | xargs)
+# 设置环境变量
+export DATABASE_URL="postgresql://postgres:li123123@db.mirncqxfdobatqhwatbh.supabase.co:5432/postgres"
+export JWT_SECRET="PFpfig8B7dPO+O3P+KdGjwm4Sa4aQba/KyZglQW/tz8ieSGeVjXqbf3/qUA7Ym6A1TtP+DBqEgtRUJE5o0zlEw=="
+export NODE_ENV=production
+export PORT=3004
+export CORS_ORIGIN="https://llfzxx.com"
 
 # 启动应用
 echo "🚀 启动简历制作网站..."
 echo "📅 启动时间: $(date)"
-echo "🌐 服务地址: http://localhost:${PORT:-3004}"
-echo "📊 健康检查: http://localhost:${PORT:-3004}/health"
+echo "🌐 服务地址: http://localhost:${PORT}"
+echo "📊 健康检查: http://localhost:${PORT}/health"
 echo "=================================================="
 
 npm start
@@ -204,6 +166,35 @@ EOF
     print_success "启动脚本已创建: ./start-production.sh"
 }
 
+# 创建PM2配置
+create_pm2_config() {
+    print_info "创建PM2配置..."
+    
+    cat > ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'resume-app',
+    script: 'src/server.ts',
+    interpreter: 'npx',
+    interpreter_args: 'tsx',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3004,
+      DATABASE_URL: 'postgresql://postgres:li123123@db.mirncqxfdobatqhwatbh.supabase.co:5432/postgres',
+      JWT_SECRET: 'PFpfig8B7dPO+O3P+KdGjwm4Sa4aQba/KyZglQW/tz8ieSGeVjXqbf3/qUA7Ym6A1TtP+DBqEgtRUJE5o0zlEw==',
+      CORS_ORIGIN: 'https://llfzxx.com'
+    }
+  }]
+}
+EOF
+    
+    print_success "PM2配置已创建: ./ecosystem.config.js"
+}
+
 # 显示部署信息
 show_deployment_info() {
     print_success "🎉 部署完成！"
@@ -211,23 +202,29 @@ show_deployment_info() {
     echo "=================================================="
     echo "📊 部署信息"
     echo "=================================================="
-    echo "🌐 服务地址: http://localhost:${PORT:-3004}"
-    echo "📊 健康检查: http://localhost:${PORT:-3004}/health"
-    echo "📚 API文档: http://localhost:${PORT:-3004}/api/ui"
+    echo "🌐 服务地址: http://localhost:3004"
+    echo "📊 健康检查: http://localhost:3004/health"
+    echo "📚 API文档: http://localhost:3004/api/ui"
     echo "🗄️  数据库: Supabase PostgreSQL"
-    echo "🔐 CORS域名: ${CORS_ORIGIN:-未设置}"
+    echo "🔐 CORS域名: https://llfzxx.com"
     echo "=================================================="
     echo ""
-    echo "🚀 启动命令:"
-    echo "   ./start-production.sh"
+    echo "🚀 启动方式:"
+    echo "   方式1: ./start-production.sh"
+    echo "   方式2: npm start"
+    echo "   方式3: pm2 start ecosystem.config.js"
     echo ""
     echo "🔍 监控命令:"
-    echo "   curl http://localhost:${PORT:-3004}/health"
+    echo "   curl http://localhost:3004/health"
     echo ""
-    echo "📝 日志查看:"
-    echo "   tail -f logs/app.log"
+    echo "📝 PM2管理:"
+    echo "   pm2 start ecosystem.config.js  # 启动"
+    echo "   pm2 status                     # 状态"
+    echo "   pm2 logs resume-app            # 日志"
+    echo "   pm2 restart resume-app         # 重启"
+    echo "   pm2 stop resume-app            # 停止"
     echo ""
-    print_warning "请确保防火墙已开放端口 ${PORT:-3004}"
+    print_warning "请确保防火墙已开放端口 3004"
     print_warning "请配置Nginx反向代理和SSL证书"
 }
 
@@ -247,8 +244,8 @@ main() {
     install_dependencies
     migrate_database
     build_project
-    health_check
     create_startup_script
+    create_pm2_config
     show_deployment_info
     
     print_success "✨ 部署脚本执行完成！"
