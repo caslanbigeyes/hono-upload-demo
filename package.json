@@ -7,32 +7,49 @@
     "dev": "tsx src/server.ts",
     "dev:old": "tsx server-node.ts",
     "dev:swagger": "node start-swagger.js",
-    "start": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
     "build": "tsc",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "tsx": "^4.20.3"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@fontsource/noto-sans-sc": "^5.2.6",
     "@hono/node-server": "^1.15.0",
     "@hono/swagger-ui": "^0.5.2",
     "@hono/zod-openapi": "^0.19.9",
     "@prisma/client": "^6.11.1",
     "@types/bcryptjs": "^3.0.0",
+    "@types/handlebars": "^4.0.40",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/pdfkit": "^0.17.0",
     "@types/pg": "^8.15.4",
     "bcryptjs": "^3.0.2",
+    "handlebars": "^4.7.8",
     "hono": "^4.8.4",
+    "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
+    "jspdf": "^3.0.1",
+    "pdfkit": "^0.17.1",
     "pg": "^8.16.3",
     "prisma": "^6.11.1",
+    "puppeteer-core": "^24.12.1",
     "zod": "^3.25.75"
   }
 }

@@ -3,6 +3,8 @@ import { swaggerUI } from '@hono/swagger-ui'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
+import { secureHeaders } from 'hono/secure-headers'
+import { timeout } from 'hono/timeout'
 
 // Routes
 import authRoutes from './routes/auth'
@@ -13,6 +15,7 @@ import educationRoutes from './routes/educations'
 import experienceRoutes from './routes/experiences'
 import projectRoutes from './routes/projects'
 import skillRoutes from './routes/skills'
+import pdfExportRoutes from './routes/pdf-export'
 
 // Database
 import { testDatabaseConnection } from './lib/database'
@@ -28,13 +31,49 @@ app.use('*', cors({
 app.use('*', logger())
 app.use('*', prettyJSON())
 
+// 安全中间件
+app.use('*', secureHeaders({
+  contentSecurityPolicy: {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'"],
+    imgSrc: ["'self'", "data:", "https:"],
+  },
+}))
+
+// 请求超时
+app.use('*', timeout(30000)) // 30秒超时
+
 // Health check
 app.get('/', (c) => {
-  return c.json({ 
+  return c.json({
     message: 'Resume API is running!',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
   })
+})
+
+// 详细健康检查
+app.get('/health', async (c) => {
+  try {
+    // 检查数据库连接
+    await testDatabaseConnection()
+
+    return c.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      database: 'connected'
+    })
+  } catch (error) {
+    return c.json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 503)
+  }
 })
 
 // API Routes
@@ -46,6 +85,7 @@ app.route('/api/educations', educationRoutes)
 app.route('/api/experiences', experienceRoutes)
 app.route('/api/projects', projectRoutes)
 app.route('/api/skills', skillRoutes)
+app.route('/api/pdf-export', pdfExportRoutes)
 
 // OpenAPI Documentation
 app.doc('/api/doc', {
@@ -57,7 +97,7 @@ app.doc('/api/doc', {
   },
   servers: [
     {
-      url: `http://localhost:${process.env.PORT || 3003}`,
+      url: `http://localhost:${process.env.PORT || 3004}`,
       description: 'Development server',
     },
   ],
@@ -70,11 +110,12 @@ app.doc('/api/doc', {
       },
     },
   },
-  security: [
-    {
-      bearerAuth: [],
-    },
-  ],
+  // 移除全局安全要求，让每个路由自己决定是否需要认证
+  // security: [
+  //   {
+  //     bearerAuth: [],
+  //   },
+  // ],
 })
 
 // Swagger UI

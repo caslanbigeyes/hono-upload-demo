@@ -1,7 +1,7 @@
 import { serve } from 'bun'
 import app from './index'
 
-const port = 3000
+const port = 3004
 
 console.log(`🚀 Server starting on port ${port}...`)
 

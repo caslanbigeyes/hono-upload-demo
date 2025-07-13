@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server'
 import app from './app'
 
-const port = parseInt(process.env.PORT || '3003')
+const port = parseInt(process.env.PORT || '3004')
 
 console.log('🚀 Starting Resume API server...')
 
