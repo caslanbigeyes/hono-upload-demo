@@ -5,7 +5,7 @@
 echo "🔍 测试环境变量配置..."
 
 # 直接设置环境变量
-export DATABASE_URL="postgresql://postgres:li123123@db.mirncqxfdobatqhwatbh.supabase.co:5432/postgres"
+export DATABASE_URL="postgresql://postgres:VxZFAfJuPD2RzDT2@db.mirncqxfdobatqhwatbh.supabase.co:5432/postgres"
 export JWT_SECRET="PFpfig8B7dPO+O3P+KdGjwm4Sa4aQba/KyZglQW/tz8ieSGeVjXqbf3/qUA7Ym6A1TtP+DBqEgtRUJE5o0zlEw=="
 export NODE_ENV=production
 export PORT=3004
